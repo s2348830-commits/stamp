@@ -1,34 +1,47 @@
 const { spawn } = require('child_process');
 const http = require('http');
 
-// 1. Render用のシンプルなWebサーバー
-// これがないとRenderは「Port 8080 をリッスンしていない」と判断して停止させます
+/**
+ * 1. Webサーバー設定
+ * cron-job.org からの /api へのアクセスに応答します
+ */
 const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Discord Bot is running!\n'); // ここで「生きてるよ」と返します
+    // ルート(/) または /api へのアクセスを許可
+    if (req.url === '/' || req.url === '/api') {
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('OK: Bot is active\n');
+    } else {
+        res.writeHead(404);
+        res.end('Not Found');
+    }
 });
 
+// Renderのポート、またはデフォルト8080を使用
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
-    console.log(`Server is listening on port ${PORT}`);
+    console.log(`Monitoring server is running on port ${PORT}`);
 });
 
-// 2. bot.py を子プロセスとして起動
+/**
+ * 2. Bot起動ロジック
+ */
 const startBot = () => {
     console.log('Starting bot.py...');
-    const bot = spawn('python', ['bot.py']);
+    
+    // Render環境では python3 を指定するのが一般的です
+    const botProcess = spawn('python3', ['bot.py']);
 
-    bot.stdout.on('data', (data) => {
-        console.log(`[Bot]: ${data}`);
+    botProcess.stdout.on('data', (data) => {
+        console.log(`[Python STDOUT]: ${data}`);
     });
 
-    bot.stderr.on('data', (data) => {
-        console.error(`[Bot Error]: ${data}`);
+    botProcess.stderr.on('data', (data) => {
+        console.error(`[Python STDERR]: ${data}`);
     });
 
-    bot.on('close', (code) => {
-        console.log(`Bot process exited with code ${code}. Restarting...`);
-        startBot(); // 落ちた場合に再起動
+    botProcess.on('close', (code) => {
+        console.log(`Bot process exited with code ${code}. Restarting in 5s...`);
+        setTimeout(startBot, 5000); 
     });
 };
 
