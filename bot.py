@@ -1,19 +1,16 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 import os
 
-# Renderの環境変数から取得、なければ直接入力（セキュリティ上環境変数推奨）
-TOKEN = os.getenv("DISCORD_TOKEN") or "MTQ1NzgwNzUxMzE2Nzg1NTg3MQ.GiBW7Z.Y5iN9Yi9E6wQk3BuqXpeLh9xxNsTaevFu28lJI"
+# 【重要】トークンは直接書かず、環境変数からのみ読み込みます
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
-# 画像フォルダのパス（相対パス）
 IMAGE_DIR = "images"
 
-# GIF/画像マップの定義
 GIF_MAP = {
     ":_1:": "_1.gif", ":_2:": "_2.gif", ":_3:": "_3.gif", ":_4:": "_4.gif",
     ":_5:": "_5.gif", ":_6:": "_6.gif", ":_7:": "_7.gif", ":_8:": "_8.gif",
@@ -35,7 +32,6 @@ async def on_ready():
     await bot.tree.sync()
     print(f"Logged in as {bot.user}")
 
-# メッセージ内の絵文字検出機能
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -49,15 +45,12 @@ async def on_message(message):
                 found_gifs.append(path)
 
     if found_gifs:
-        # メッセージ削除
         try:
             await message.delete()
         except discord.Forbidden:
             pass
 
         reference = message.reference if message.reference else None
-        
-        # 検出されたすべてのGIFを送信
         for path in found_gifs:
             await message.channel.send(
                 content=f"{message.author.mention}",
@@ -68,7 +61,6 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# 個別コマンド（/_1 など）を動的に登録
 def create_command(file_path):
     async def _cmd(ctx):
         if os.path.exists(file_path):
@@ -82,7 +74,6 @@ for emoji, filename in GIF_MAP.items():
     full_path = os.path.join(IMAGE_DIR, filename)
     bot.add_command(commands.Command(create_command(full_path), name=cmd_name))
 
-# スラッシュコマンド /all
 @bot.tree.command(name="all", description="対応しているスタンプ一覧を表示します")
 async def all_cmd(interaction: discord.Interaction):
     text = " ".join(GIF_MAP.keys())
@@ -91,4 +82,8 @@ async def all_cmd(interaction: discord.Interaction):
         ephemeral=True
     )
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    if not TOKEN:
+        print("❌ DISCORD_TOKEN が設定されていません。")
+    else:
+        bot.run(TOKEN)
