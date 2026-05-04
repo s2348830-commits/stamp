@@ -4,7 +4,7 @@ from discord import app_commands
 import os
 
 # Renderの環境変数から取得、なければ直接入力（セキュリティ上環境変数推奨）
-TOKEN = os.getenv("DISCORD_TOKEN") or "MTQ1NzgwNzUxMzE2Nzg1NTg3MQ.G30Hx5.RZRzbD2nGutMWAwLnt__2nlmxWgN_pD_0ZqDFU"
+TOKEN = os.getenv("DISCORD_TOKEN") or "MTQ1NzgwNzUxMzE2Nzg1NTg3MQ.GiBW7Z.Y5iN9Yi9E6wQk3BuqXpeLh9xxNsTaevFu28lJI"
 
 intents = discord.Intents.default()
 intents.message_content = True
