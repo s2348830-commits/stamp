@@ -1,12 +1,8 @@
 const { spawn } = require('child_process');
 const http = require('http');
 
-/**
- * 1. Webサーバー設定
- * cron-job.org からの /api へのアクセスに応答します
- */
+// Render用のWebサーバー
 const server = http.createServer((req, res) => {
-    // ルート(/) または /api へのアクセスを許可
     if (req.url === '/' || req.url === '/api') {
         res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('OK: Bot is active\n');
@@ -16,20 +12,19 @@ const server = http.createServer((req, res) => {
     }
 });
 
-// Renderのポート、またはデフォルト8080を使用
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
-    console.log(`Monitoring server is running on port ${PORT}`);
+    console.log(`Server is listening on port ${PORT}`);
 });
 
-/**
- * 2. Bot起動ロジック
- */
+// Botプロセスを起動
 const startBot = () => {
-    console.log('Starting bot.py...');
+    console.log('Starting bot.py with environment variables...');
     
-    // Render環境では python3 を指定するのが一般的です
-    const botProcess = spawn('python3', ['bot.py']);
+    // 【重要】env: process.env を追加して、Renderの設定をPythonに渡す
+    const botProcess = spawn('python3', ['bot.py'], {
+        env: process.env 
+    });
 
     botProcess.stdout.on('data', (data) => {
         console.log(`[Python STDOUT]: ${data}`);
