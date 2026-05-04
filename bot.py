@@ -1,6 +1,10 @@
 import discord
 from discord.ext import commands
 import os
+import sys
+
+# 標準出力のバッファリングを無効化（Renderのログに即時反映させるため）
+sys.stdout.reconfigure(line_buffering=True)
 
 # 【重要】トークンは直接書かず、環境変数からのみ読み込みます
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -11,6 +15,7 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 
 IMAGE_DIR = "images"
 
+# 最新のファイルリストに基づいたマップ
 GIF_MAP = {
     ":_1:": "_1.gif", ":_2:": "_2.gif", ":_3:": "_3.gif", ":_4:": "_4.gif",
     ":_5:": "_5.gif", ":_6:": "_6.gif", ":_7:": "_7.gif", ":_8:": "_8.gif",
@@ -31,29 +36,36 @@ GIF_MAP = {
 
 @bot.event
 async def on_ready():
+    # スラッシュコマンド（/allなど）を同期
     await bot.tree.sync()
-    print(f"Logged in as {bot.user}")
+    print(f"✅ Logged in as {bot.user}")
 
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    found_gifs = []
+    # メッセージ内のキーワードを確認
+    found_assets = []
     for emoji, filename in GIF_MAP.items():
         if emoji in message.content:
             path = os.path.join(IMAGE_DIR, filename)
             if os.path.exists(path):
-                found_gifs.append(path)
+                found_assets.append(path)
 
-    if found_gifs:
+    if found_assets:
+        # 元メッセージを削除
         try:
             await message.delete()
         except discord.Forbidden:
+            print("⚠️ 権限不足でメッセージを削除できませんでした。")
+        except discord.NotFound:
             pass
 
+        # 返信先がある場合は引き継ぐ
         reference = message.reference if message.reference else None
-        for path in found_gifs:
+        
+        for path in found_assets:
             await message.channel.send(
                 content=f"{message.author.mention}",
                 file=discord.File(path),
@@ -61,24 +73,30 @@ async def on_message(message):
                 mention_author=True
             )
 
+    # プレフィックスコマンド（/1など）の処理
     await bot.process_commands(message)
 
+# プレフィックスコマンド ( /_1 など) の動的生成
 def create_command(file_path):
     async def _cmd(ctx):
         if os.path.exists(file_path):
             await ctx.send(file=discord.File(file_path))
         else:
-            await ctx.send("GIFが見つかりませんでした。")
+            await ctx.send("ファイルが見つかりませんでした。")
     return _cmd
 
 for emoji, filename in GIF_MAP.items():
     cmd_name = emoji.replace(":", "")
     full_path = os.path.join(IMAGE_DIR, filename)
+    # 動的に prefix コマンドを追加
     bot.add_command(commands.Command(create_command(full_path), name=cmd_name))
 
 @bot.tree.command(name="all", description="対応しているスタンプ一覧を表示します")
 async def all_cmd(interaction: discord.Interaction):
     text = " ".join(GIF_MAP.keys())
+    # Discordの2000文字制限対策
+    if len(text) > 1900:
+        text = text[:1900] + "..."
     await interaction.response.send_message(
         f"📚 **対応スタンプ一覧**\n{text}",
         ephemeral=True
